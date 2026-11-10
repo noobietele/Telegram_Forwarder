@@ -1,126 +1,427 @@
 # Telegram Forwarder
 
-A simple Telegram Python bot running on Python3 to automatically forward messages from one chat to another.
+A Python-based Telegram bot that automatically copies or forwards messages from configured source chats to one or more destination chats.
 
-## Migration from V1
+It supports multiple forwarding routes, Telegram forum topics, message-type filtering, keyword filters, blacklist keywords, live configuration reloads, and configuration uploads through Telegram.
 
-v2 uses a different configuration file format. Please refer to the [Configuration](#configuration) section for more information. The bot will not start if the configuration file is not in the correct format.
+## Features
 
-## Starting The Bot
+- Forward messages from multiple source chats.
+- Send messages to multiple destination chats.
+- Copy messages without the original forwarded-from attribution.
+- Support Telegram groups, channels, and forum topics.
+- Filter messages by type, including videos, documents, photos, audio, and text.
+- Include keyword-based filters.
+- Exclude messages containing blacklisted keywords.
+- Handle captioned media.
+- Retry temporary network errors and Telegram rate limits.
+- `/status` command for forwarding statistics.
+- `/reload` command to reload the configuration without restarting.
+- `/upload` command to upload and activate a new `chat_list.json` through Telegram.
+- `/cancel` command to cancel a pending configuration upload.
 
-Once you've setup your your configuration (see below) is complete, simply run:
+## Project Structure
 
-```shell
-python -m forwarder
+```text
+Telegram-Forwarder/
+├── forwarder/
+│   ├── modules/
+│   │   ├── default.py
+│   │   ├── forward.py
+│   │   ├── misc.py
+│   │   ├── reload.py
+│   │   ├── status.py
+│   │   └── upload.py
+│   ├── utils/
+│   │   ├── chat.py
+│   │   ├── message.py
+│   │   └── stats.py
+│   ├── __init__.py
+│   ├── __main__.py
+│   └── main.py
+├── .env.example
+├── .gitignore
+├── chat_list.sample.json
+├── requirements.txt
+└── README.md
 ```
 
-or with poetry (recommended)
+## Requirements
 
-```shell
-poetry run forwarder
+- Python 3.9 or newer
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+- Your Telegram numeric user ID
+- Bot access to the source and destination chats
+
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/YOUR_USERNAME/Telegram-Forwarder.git
+cd Telegram-Forwarder
 ```
 
-## Setting Up The Bot (Read the instruction bellow before starting the bot!):
+Replace `YOUR_USERNAME` with your GitHub username.
 
-Telegram Forwarder only supports Python 3.9 and higher.
+### 2. Install dependencies
 
-### Configuration
+```bash
+pip3 install -r requirements.txt
+```
 
-There are two files mandatory for the bot to work `.env` and `chat_list.json`.
+### 3. Configure environment variables
 
-#### `.env`
+Create a file named `.env` in the project root:
 
-Template env may be found in `sample.env`. Rename it to `.env` and fill in the values:
+```env
+BOT_TOKEN=YOUR_BOT_TOKEN
+OWNER_ID=YOUR_TELEGRAM_USER_ID
+REMOVE_TAG=True
+```
 
-- `BOT_TOKEN` - Telegram bot token. You can get it from [@BotFather](https://t.me/BotFather)
+| Variable | Description |
+|---|---|
+| `BOT_TOKEN` | Telegram bot token from BotFather |
+| `OWNER_ID` | Numeric Telegram user ID of the bot owner |
+| `REMOVE_TAG` | `True` copies messages without forward attribution; `False` forwards messages with attribution |
 
-- `OWNER_ID` - An integer of consisting of your owner ID.
+Optional configuration:
 
-- `REMOVE_TAG` - set to `True` if you want to remove the tag ("Forwarded from xxxxx") from the forwarded message.
+```env
+CHAT_LIST_PATH=chat_list.json
+```
 
-#### `chat_list.json`
+By default, the bot reads `chat_list.json` from the project root.
 
-Template chat_list may be found in `chat_list.sample.json`. Rename it to `chat_list.json`.
+**Never upload your actual `.env` file or bot token to GitHub.**
 
-This file contains the list of chats to forward messages from and to. The bot expect it to be an Array of objects with the following structure:
+### 4. Create chat_list.json
+
+Create a file named `chat_list.json` in the project root.
+
+This file defines the source chats, destination chats, and forwarding rules.
+
+Example:
 
 ```json
 [
   {
-    "source": -10012345678,
-    "destination": [-10011111111, "-10022222222#123456"]
-  },
-  {
-    "source": "-10087654321#000000", // Topic/Forum group
-    "destination": ["-10033333333#654321"],
-    "filters": ["word1", "word2"] // message that contain this word will be forwarded
-  },
-  {
-    "source": -10087654321,
-    "destination": [-10033333333],
-    "blacklist": ["word3", "word4"] // message that contain this word will not be forwarded
-  },
-  {
-    "source": -10087654321,
-    "destination": [-10033333333],
-    "filters": ["word5"],
-    "blacklist": ["word6"]
-    // message must contain word5 and must not contain word6 to be forwarded
+    "source": -1001111111111,
+    "destination": [
+      -1002222222222,
+      -1003333333333
+    ]
   }
 ]
 ```
 
-- `source` - The chat ID of the chat to forward messages from. It can be a group or a channel.
+Replace the example IDs with your actual Telegram chat IDs.
 
-  > If the source chat is a Topic groups, you **MUST** explicitly specify the topic ID. The bot will ignore incoming message from topic group if the topic ID is not specified.
+## Configuration Guide
 
-- `destination` - An array of chat IDs to forward messages to. It can be a group or a channel.
+Each forwarding rule supports the following fields:
 
-  > Destenation supports Topics chat. You can use `#topicID` string to forward to specific topic. Example: `[-10011111111, "-10022222222#123456"]`. With this config it will forward to chat `-10022222222` with topic `123456` and to chat `-10011111111` .
+| Field | Required | Description |
+|---|---|---|
+| `source` | Yes | Source chat ID, optionally followed by a topic ID |
+| `destination` | Yes | List of destination chat IDs, optionally with topic IDs |
+| `message_types` | No | Allowed message types |
+| `filters` | No | Messages must contain at least one matching keyword |
+| `blacklist` | No | Messages containing any matching keyword are rejected |
 
-- `filters` (Optional) - An array of strings to filter words. If the message containes any of the strings in the array, it **WILL BE** forwarded.
+### Multiple destinations
 
-- `blacklist` (Optional) - An array of strings to blacklist words. If the message containes any of the string in the array, it will **NOT BE** forwarded.
+One source can forward messages to multiple destinations:
 
-You may add as many objects as you want. The bot will forward messages from all the chats in the `source` field to all the chats in the `destination` field. Duplicates are allowed as it already handled by the bot.
-
-### Python dependencies
-
-Install the necessary python dependencies by moving to the project directory and running:
-
-```shell
-poetry install --only main
+```json
+[
+  {
+    "source": -1001111111111,
+    "destination": [
+      -1002222222222,
+      -1003333333333
+    ]
+  }
+]
 ```
 
-or with pip
+### Message-type filtering
 
-```shell
-pip3 install -r requirements.txt
+Forward only videos and documents:
+
+```json
+[
+  {
+    "source": -1001111111111,
+    "destination": [-1002222222222],
+    "message_types": ["video", "document"]
+  }
+]
 ```
 
-This will install all necessary python packages.
+Supported message types:
 
-### Launch in Docker container
+- `text`
+- `photo`
+- `video`
+- `document`
+- `audio`
+- `voice`
+- `animation`
+- `sticker`
+- `video_note`
+- `contact`
+- `location`
+- `poll`
+- `other`
 
-#### Requrements
+If `message_types` is omitted, all supported message types are allowed.
 
-- Docker
-- docker compose
+### Keyword filtering
 
-Before launch make sure all configuration are completed (`.env` and `chat_list.json`)!
+Forward messages containing 1080p or 2160p, while excluding CAMRip and HDCAM:
 
-Then, simply run the command:
-
-```shell
-docker compose up -d
+```json
+[
+  {
+    "source": -1001111111111,
+    "destination": [-1002222222222],
+    "message_types": ["video", "document"],
+    "filters": ["1080p", "2160p"],
+    "blacklist": ["CAMRip", "HDCAM"]
+  }
+]
 ```
 
-You can view the logs by the command:
+Filter behaviour:
 
-```shell
-docker compose logs -f
+- Multiple `filters` entries use OR matching: at least one must match.
+- Multiple `blacklist` entries use OR matching: any match rejects the message.
+- Matching is case-insensitive.
+- Matching uses whole-word boundaries.
+- Message captions are checked along with text.
+
+### Forum topic forwarding
+
+You can route a specific source forum topic to a specific destination forum topic.
+
+Format:
+
+```text
+CHAT_ID#TOPIC_ID
 ```
 
-### Credits
+Example:
 
-- [AutoForwarder-TelegramBot](https://github.com/saksham2410/AutoForwarder-TelegramBot)
+```json
+[
+  {
+    "source": "-1001111111111#100",
+    "destination": [
+      "-1002222222222#200"
+    ],
+    "message_types": ["video", "document"]
+  }
+]
+```
+
+This forwards messages from topic `100` in the source group to topic `200` in the destination group.
+
+### Complete configuration example
+
+```json
+[
+  {
+    "source": -1001111111111,
+    "destination": [
+      -1002222222222,
+      -1003333333333
+    ]
+  },
+  {
+    "source": -1004444444444,
+    "destination": [-1005555555555],
+    "message_types": ["video", "document"]
+  },
+  {
+    "source": "-1006666666666#100",
+    "destination": ["-1007777777777#200"],
+    "message_types": ["video", "document"]
+  },
+  {
+    "source": -1008888888888,
+    "destination": [-1009999999999],
+    "message_types": ["video", "document"],
+    "filters": ["1080p", "2160p"],
+    "blacklist": ["CAMRip", "HDCAM"]
+  }
+]
+```
+
+## Telegram Bot Commands
+
+| Command | Description |
+|---|---|
+| `/start` | Start the bot |
+| `/help` | Display available commands |
+| `/id` | Get your chat ID and forum topic ID |
+| `/status` | Display forwarding statistics |
+| `/reload` | Reload `chat_list.json` from disk |
+| `/upload` | Upload a new `chat_list.json` |
+| `/cancel` | Cancel a pending configuration upload |
+
+The owner-only commands are restricted to the configured owner in private chat.
+
+### Updating configuration
+
+You have two options:
+
+**Option 1: Edit on the server**
+
+Edit `chat_list.json`, then send:
+
+```text
+/reload
+```
+
+**Option 2: Upload through Telegram**
+
+1. Send `/upload` to the bot privately.
+2. Upload a document named exactly `chat_list.json`.
+3. The bot validates the configuration.
+4. If valid, the new configuration is activated without restarting.
+
+The upload limit is 1 MB. Invalid configurations are rejected without replacing the active routes.
+
+## Running the Bot
+
+Start the bot using:
+
+```bash
+python3 -m forwarder
+```
+
+The bot uses Telegram polling to receive messages.
+
+To stop it, press:
+
+```text
+Ctrl + C
+```
+
+## Running on Oracle Cloud / Ubuntu
+
+The bot can run directly on an Ubuntu VPS.
+
+### Install screen
+
+```bash
+sudo apt update
+sudo apt install screen -y
+```
+
+### Start a persistent session
+
+```bash
+screen -S tgforwarder
+```
+
+Enter your project directory:
+
+```bash
+cd ~/Telegram-Forwarder
+```
+
+Start the bot:
+
+```bash
+python3 -m forwarder
+```
+
+Detach from the screen session:
+
+- Press `Ctrl + A`
+- Then press `D`
+
+The bot continues running after you disconnect from SSH.
+
+### Screen commands
+
+List sessions:
+
+```bash
+screen -ls
+```
+
+Reconnect:
+
+```bash
+screen -r tgforwarder
+```
+
+Stop the bot:
+
+Reconnect to the session and press `Ctrl + C`.
+
+## Permissions and Setup
+
+Before using the bot:
+
+1. Add the bot to your source groups and channels.
+2. Ensure it has permission to access source messages.
+3. Give it permission to send messages in destination groups.
+4. For channels, provide the necessary administrator permissions.
+5. For forum destinations, ensure it can post in the required topics.
+6. Use `/id` to identify chat and topic IDs.
+
+Telegram bot privacy settings and channel permissions may affect which messages the bot can receive.
+
+## Troubleshooting
+
+**Bot does not start**
+
+- Verify `BOT_TOKEN` in `.env`.
+- Check that `chat_list.json` exists.
+- Verify JSON syntax.
+- Install dependencies again if necessary.
+
+**Messages are not forwarding**
+
+- Verify source and destination IDs.
+- Check bot membership and permissions.
+- Check whether the message matches the configured filters.
+- For topic routes, verify both topic IDs.
+
+**Configuration changes are not applied**
+
+- Check the JSON syntax.
+- Send `/reload` after editing the file.
+- Check the bot logs for validation errors.
+
+**Bot encounters rate limits**
+
+The forwarder retries Telegram rate-limit responses and temporary network errors up to a bounded number of attempts. Messages that exhaust retries are logged as failures.
+
+## Security
+
+- Never commit `.env`.
+- Never publish your bot token.
+- Do not commit personal session files or private configuration.
+- Use a private repository if your source code or configuration should not be public.
+- Keep a backup of your working configuration.
+
+## Technology
+
+- Python
+- python-telegram-bot
+- python-dotenv
+- Telegram Bot API
+
+## Disclaimer
+
+This project is intended for legitimate Telegram message forwarding and chat management. Use it only in chats where you have appropriate access and permission to forward or copy content.
+
+---
+
+**Configuration files:** Use `.env.example` and `chat_list.sample.json` as templates. Create your own `.env` and `chat_list.json` locally before running the bot.
