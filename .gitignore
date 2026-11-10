@@ -1,0 +1,27 @@
+# Secrets and local configuration
+.env
+chat_list.json
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Logs and runtime files
+*.log
+*.pid
+
+# Telegram/session credentials
+*.session
+*.session-journal
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
