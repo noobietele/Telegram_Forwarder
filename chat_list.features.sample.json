@@ -1,0 +1,29 @@
+[
+  {
+    "source": -1001111111111,
+    "destination": [-1002222222222, -1003333333333]
+  },
+  {
+    "source": -1004444444444,
+    "destination": [-1005555555555],
+    "message_types": ["video", "document"]
+  },
+  {
+    "source": -1006666666666,
+    "destination": [-1007777777777],
+    "message_types": ["text", "photo", "video"],
+    "filters": ["1080p", "2160p"],
+    "blacklist": ["CAMRip", "HDCAM"]
+  },
+  {
+    "source": "-1008888888888#100",
+    "destination": ["-1009999999999#200"],
+    "message_types": ["video", "document"]
+  },
+  {
+    "source": -1001212121212,
+    "destination": [-1003434343434],
+    "message_types": ["document"],
+    "filters": ["torrent", "magnet"]
+  }
+]
