@@ -1,22 +1,47 @@
 [
-    {
-        "source": -10012345678,
-        "destination": [-10098765432, -10012345678]
-    },
-    {
-        "source": -10098765432,
-        "destination": [-10012345678, "-10012345678#98765"],
-        "filters": ["word1", "word2"]
-    },
-    {
-        "source": -10087654321,
-        "destination": [-10033333333],
-        "blacklist": ["word3", "word4"]
-    },
-    {
-        "source": -10087654321,
-        "destination": [-10033333333],
-        "filters": ["word5"],
-        "blacklist": ["word6"]
-    }
+  {
+    "source": -1001111111111,
+    "destination": [
+      -1002222222222,
+      -1003333333333
+    ]
+  },
+  {
+    "source": -1004444444444,
+    "destination": [
+      -1005555555555
+    ],
+    "message_types": [
+      "video",
+      "document"
+    ]
+  },
+  {
+    "source": -1006666666666,
+    "destination": [
+      -1007777777777
+    ],
+    "message_types": [
+      "video",
+      "document"
+    ],
+    "filters": [
+      "1080p",
+      "2160p"
+    ],
+    "blacklist": [
+      "CAMRip",
+      "HDCAM"
+    ]
+  },
+  {
+    "source": "-1008888888888#100",
+    "destination": [
+      "-1009999999999#200"
+    ],
+    "message_types": [
+      "video",
+      "document"
+    ]
+  }
 ]
